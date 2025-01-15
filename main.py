@@ -1,8 +1,13 @@
 import os
 import aiohttp
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
+
+
 
 BASE_API_URL = "https://api.langflow.astra.datastax.com"
 LANGFLOW_ID = os.environ.get("LANGFLOW_ID")
