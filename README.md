@@ -12,12 +12,18 @@ env\Scripts\activate
 ```
 pip install -r requirements.txt
 ```
-4. Run the application
+4. Create .env file
+```
+APP_TOKEN = "<app-token>"
+LANGFLOW_ID = "<langflow-id>"
+FLOW_ID = "<flow-id>"
+```
+5. Run the application
 ```
 fastapi run
 ```
 
-5. endpoint for websocket connection (use in react side)
+6. endpoint for websocket connection (use in react side)
 ```
 ws://localhost:8000/ws
 ```
