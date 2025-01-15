@@ -49,21 +49,40 @@ async def run_flow_via_websocket(message: str, websocket: WebSocket):
                 
                 # Parse the JSON response to get the stream URL
                 response_data = await response.json()
-                stream_url = response_data.get("stream_url")
-                if not stream_url:
-                    await websocket.send_text("Error: No stream_url found in the response.")
+                outputs = response_data.get("outputs", [])
+                if outputs:
+                    first_output = outputs[0].get("outputs", [])
+                    if first_output:
+                        artifacts = first_output[0].get("artifacts", {})
+                        stream_url = artifacts.get("stream_url")
+                        if stream_url:
+                            # Construct the full stream URL if necessary
+                            full_stream_url = f"{BASE_API_URL}{stream_url}?session_id={response_data.get('session_id')}"
+                        else:
+                            await websocket.send_text("Error: No stream_url found in the response.")
+                            return
+                    else:
+                        await websocket.send_text("Error: No outputs found in the response.")
+                        return
+                else:
+                    await websocket.send_text("Error: No outputs found in the response.")
                     return
 
+
             # Connect to the stream URL and process the streaming data
-            async with session.get(stream_url, headers=headers) as stream_response:
+            async with session.get(full_stream_url, headers=headers) as stream_response:
                 if stream_response.status != 200:
                     await websocket.send_text(f"Error: {stream_response.status} - {await stream_response.text()}")
                     return
 
-                async for line in stream_response.content:
-                    if line:
-                        await websocket.send_text(line.decode("utf-8"))
+                async for chunk in stream_response.content.iter_any():
+                    if chunk:
+                        await websocket.send_text(chunk.decode("utf-8"))
 
+
+    except WebSocketDisconnect:
+        print("Client disconnected")
+        
     except Exception as e:
         await websocket.send_text(f"An error occurred: {str(e)}")
 
