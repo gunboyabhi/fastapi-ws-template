@@ -1,6 +1,6 @@
 import os
-import aiohttp
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+import requests
+from fastapi import FastAPI
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -25,76 +25,42 @@ LANGFLOW_ID = os.environ.get("LANGFLOW_ID")
 ENDPOINT = "social_stats"
 APPLICATION_TOKEN = os.environ.get("APP_TOKEN")
 
-async def run_flow_via_websocket(message: str, websocket: WebSocket):
+def run_flow_via_http(message: str):
     try:
-        api_url = f"{BASE_API_URL}/lf/{LANGFLOW_ID}/api/v1/run/{ENDPOINT}?stream=true"
-        
+        api_url = f"{BASE_API_URL}/lf/{LANGFLOW_ID}/api/v1/run/{ENDPOINT}"
+
+        prompt = """
+            You are an expert in analyzing media posts and providing detailed and accurate information. 
+            Your primary role is to utilize the provided tools to efficiently look up posts likes, comments, shares, engagement rate.
+            Always aim to deliver clear, concise, and helpful responses, ensuring the user's needs are fully met. \n
+            Response Format: Markdown
+        """
         payload = {
-            "input_value": message,
+            "input_value": f"{prompt} \n {message}",
             "output_type": "chat",
             "input_type": "chat",
         }
-        
+
         headers = {
             "Authorization": f"Bearer {APPLICATION_TOKEN}",
             "Content-Type": "application/json"
         }
-        
-        # Initiate the flow with streaming enabled
-        async with aiohttp.ClientSession() as session:
-            async with session.post(api_url, json=payload, headers=headers) as response:
-                if response.status != 200:
-                    await websocket.send_text(f"Error: {response.status} - {await response.text()}")
-                    return
-                
-                # Parse the JSON response to get the stream URL
-                response_data = await response.json()
-                outputs = response_data.get("outputs", [])
-                if outputs:
-                    first_output = outputs[0].get("outputs", [])
-                    if first_output:
-                        artifacts = first_output[0].get("artifacts", {})
-                        stream_url = artifacts.get("stream_url")
-                        if stream_url:
-                            # Construct the full stream URL if necessary
-                            full_stream_url = f"{BASE_API_URL}{stream_url}?session_id={response_data.get('session_id')}"
-                        else:
-                            await websocket.send_text("Error: No stream_url found in the response.")
-                            return
-                    else:
-                        await websocket.send_text("Error: No outputs found in the response.")
-                        return
-                else:
-                    await websocket.send_text("Error: No outputs found in the response.")
-                    return
 
+        api_url = f"{BASE_API_URL}/lf/{LANGFLOW_ID}/api/v1/run/{ENDPOINT}"
 
-            # Connect to the stream URL and process the streaming data
-            async with session.get(full_stream_url, headers=headers) as stream_response:
-                if stream_response.status != 200:
-                    await websocket.send_text(f"Error: {stream_response.status} - {await stream_response.text()}")
-                    return
+        headers = {"Authorization": "Bearer " + APPLICATION_TOKEN, "Content-Type": "application/json"}
+        response = requests.post(api_url, json=payload, headers=headers)
 
-                async for chunk in stream_response.content.iter_any():
-                    if chunk:
-                        await websocket.send_text(chunk.decode("utf-8"))
+        if response.status_code != 200:
+            return {"error": f"Error: {response.status_code} - {response.text}"}, 500
 
+        response_data = response.json()
+        message = response_data.get("outputs")[0].get("outputs")[0].get("results").get("message").get("text")
+        return {"ai_response": message}, 200
 
-    except WebSocketDisconnect:
-        print("Client disconnected")
-        
     except Exception as e:
-        await websocket.send_text(f"An error occurred: {str(e)}")
+        return {"error": f"An error occurred: {str(e)}"}
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        while True:
-            # Receive message from the WebSocket client
-            message = await websocket.receive_text()
-            
-            # Process the message via LangFlow and stream the result
-            await run_flow_via_websocket(message, websocket)
-    except WebSocketDisconnect:
-        print("Client disconnected")
+@app.post("/process")
+def process_message(message: str):
+    return run_flow_via_http(message)
