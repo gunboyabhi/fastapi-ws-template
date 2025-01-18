@@ -1,5 +1,5 @@
 import os
-import requests
+import httpx  # Use httpx for async HTTP requests
 from fastapi import FastAPI
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,7 +25,8 @@ LANGFLOW_ID = os.environ.get("LANGFLOW_ID")
 ENDPOINT = "social_stats"
 APPLICATION_TOKEN = os.environ.get("APP_TOKEN")
 
-def run_flow_via_http(message: str):
+
+async def run_flow_via_http(message: str):
     try:
         api_url = f"{BASE_API_URL}/lf/{LANGFLOW_ID}/api/v1/run/{ENDPOINT}"
 
@@ -46,21 +47,33 @@ def run_flow_via_http(message: str):
             "Content-Type": "application/json"
         }
 
-        api_url = f"{BASE_API_URL}/lf/{LANGFLOW_ID}/api/v1/run/{ENDPOINT}"
-
-        headers = {"Authorization": "Bearer " + APPLICATION_TOKEN, "Content-Type": "application/json"}
-        response = requests.post(api_url, json=payload, headers=headers)
+        # Use httpx for async HTTP requests
+        async with httpx.AsyncClient() as client:
+            response = await client.post(api_url, json=payload, headers=headers)
 
         if response.status_code != 200:
             return {"error": f"Error: {response.status_code} - {response.text}"}, 500
 
         response_data = response.json()
-        message = response_data.get("outputs")[0].get("outputs")[0].get("results").get("message").get("text")
+        message = (
+            response_data
+            .get("outputs")[0]
+            .get("outputs")[0]
+            .get("results")
+            .get("message")
+            .get("text")
+        )
         return {"ai_response": message}, 200
 
     except Exception as e:
         return {"error": f"An error occurred: {str(e)}"}
 
+
+from pydantic import BaseModel
+
+class MessageRequest(BaseModel):
+    message: str
+
 @app.post("/process")
-def process_message(message: str):
-    return run_flow_via_http(message)
+async def process_message(request: MessageRequest):
+    return await run_flow_via_http(request.message)
