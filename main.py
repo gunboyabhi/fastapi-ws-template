@@ -293,7 +293,7 @@ def process_daily_horoscope(request: Request):
     zodiac_sign = request.session.get("zodiac_sign", 'Aries')
     return get_zodiac_data_today(zodiac_sign)
 
-@app.get('/weekly')
+@app.get('/monthly')
 def process_daily_horoscope(request: Request):
     zodiac_sign = request.session.get("zodiac_sign", 'Aries')
     return get_zodiac_data_weekly(zodiac_sign)
