@@ -122,7 +122,13 @@ def get_data(request):
     response = requests.request("POST", url, headers=headers, data=payload)
     if response:
         json_res = json.loads(response.text)
-        print(json_res)
+        json_res["name"] = request.name
+        json_res["year"] = request.year
+        json_res["month"] = request.month
+        json_res["date"] = request.date
+        json_res["hours"] = request.hours
+        json_res["minutes"] = request.minutes
+        json_res["seconds"] = request.seconds
         return json_res
 
 
