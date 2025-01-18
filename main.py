@@ -120,7 +120,6 @@ def get_data(request):
     }
 
     response = requests.request("POST", url, headers=headers, data=payload)
-    breakpoint()
     if response:
         json_res = json.loads(response.text)
         print(json_res)
