@@ -120,7 +120,7 @@ def get_data(request):
     }
 
     response = requests.request("POST", url, headers=headers, data=payload)
-
+    breakpoint()
     if response:
         json_res = json.loads(response.text)
         print(json_res)
@@ -251,7 +251,7 @@ def get_zodiac_data_today(sign):
 
 
 def get_zodiac_data_weekly(sign):
-    url = "https://horoscope-app-api.vercel.app/api/v1/get-horoscope/monthly?sign=Aries"
+    url = "https://horoscope-app-api.vercel.app/api/v1/get-horoscope/monthly"
     params = {
         "sign": f"{sign}"
     }
