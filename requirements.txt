@@ -2,3 +2,4 @@ fastapi[standard]
 aiohttp
 python-dotenv
 httpx
+astrapy
