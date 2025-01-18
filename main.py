@@ -98,20 +98,20 @@ def get_data(request):
     url = "https://json.freeastrologyapi.com/planets"
 
     payload = json.dumps({
-    "name": request.name,
-    "year": request.year,
-    "month": request.month,
-    "date": request.date,
-    "hours": request.hours,
-    "minutes": request.minutes,
-    "seconds": request.seconds,
-    "latitude": 90,
-    "longitude": 180,
-    "timezone": 5.5,
-    "settings": {
-        "observation_point": "topocentric",
-        "ayanamsha": "lahiri"
-    }
+        "name": request.name,
+        "year": request.year,
+        "month": request.month,
+        "date": request.date,
+        "hours": request.hours,
+        "minutes": request.minutes,
+        "seconds": request.seconds,
+        "latitude": 90,
+        "longitude": 180,
+        "timezone": 5.5,
+        "settings": {
+            "observation_point": "topocentric",
+            "ayanamsha": "lahiri"
+        }
     })
 
     headers = {
@@ -301,12 +301,12 @@ def process_daily_horoscope(request: Request):
 
 
 @app.post("/process")
-def process_message(request: chatRequest):
+def process_message(request: chatRequest, req: Request):
     # get token
     data = get_data(request)
     zodiac_sign = get_zodiac_sign(day=request.day, month=request.month)
     if zodiac_sign:
-        request.session["zodiac_sign"] = zodiac_sign
+        req.session["zodiac_sign"] = zodiac_sign
     daily_data = get_zodiac_data_today(sign=zodiac_sign)
     weekly_data = get_zodiac_data_weekly(sign=zodiac_sign)
     data['daily_horoscope_data'] = daily_data
