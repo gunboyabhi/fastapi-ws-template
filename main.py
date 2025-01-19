@@ -8,6 +8,8 @@ import base64
 import json
 import uuid
 from starlette.middleware.sessions import SessionMiddleware
+from astrapy import DataAPIClient
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -39,18 +41,15 @@ ENDPOINT = "social_stats"
 APPLICATION_TOKEN = os.environ.get("APP_TOKEN")
 
 
-async def run_flow_via_http(message: str):
+
+@app.post("/chat")
+def run_flow_via_http(message: str):
     try:
+        
         api_url = f"{BASE_API_URL}/lf/{LANGFLOW_ID}/api/v1/run/{ENDPOINT}"
 
-        prompt = """
-            You are an expert in analyzing media posts and providing detailed and accurate information. 
-            Your primary role is to utilize the provided tools to efficiently look up posts likes, comments, shares, engagement rate.
-            Always aim to deliver clear, concise, and helpful responses, ensuring the user's needs are fully met. \n
-            Response Format: Markdown
-        """
         payload = {
-            "input_value": f"{prompt} \n {message}",
+            "input_value": f"{message}",
             "output_type": "chat",
             "input_type": "chat",
         }
@@ -61,8 +60,7 @@ async def run_flow_via_http(message: str):
         }
 
         # Use httpx for async HTTP requests
-        async with httpx.AsyncClient() as client:
-            response = await client.post(api_url, json=payload, headers=headers)
+        response = requests.post(api_url, json=payload, headers=headers)
 
         if response.status_code != 200:
             return {"error": f"Error: {response.status_code} - {response.text}"}, 500
@@ -133,7 +131,6 @@ def get_data(request):
 
 
 def insert_data_into_astra_db(data):
-    from astrapy import DataAPIClient
 
     # Initialize the client
     client = DataAPIClient(DB_KEY)
@@ -275,9 +272,6 @@ def get_zodiac_data_weekly(sign):
         print("Error:", response.status_code, response.text)
         return {}
 
-
-
-from pydantic import BaseModel
 
 class chatRequest(BaseModel):
     name: str
