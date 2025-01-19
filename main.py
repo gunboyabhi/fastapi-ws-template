@@ -317,13 +317,17 @@ def process_daily_horoscope(request: Request):
 @app.post("/process")
 def process_message(request: chatRequest, req: Request):
     # get token
-    data = get_data(request)
-    zodiac_sign = get_zodiac_sign(day=request.day, month=request.month)
-    if zodiac_sign:
-        req.session["zodiac_sign"] = zodiac_sign
-    daily_data = get_zodiac_data_today(sign=zodiac_sign)
-    weekly_data = get_zodiac_data_weekly(sign=zodiac_sign)
-    data['daily_horoscope_data'] = daily_data
-    data["weekly_horoscope_data"] = weekly_data
-    insert_data_into_astra_db(data=data)
-    return {"message": "successfully submitted", 'status': 200}
+    try:
+        data = get_data(request)
+        zodiac_sign = get_zodiac_sign(day=request.day, month=request.month)
+        if zodiac_sign:
+            req.session["zodiac_sign"] = zodiac_sign
+        daily_data = get_zodiac_data_today(sign=zodiac_sign)
+        weekly_data = get_zodiac_data_weekly(sign=zodiac_sign)
+        data['daily_horoscope_data'] = daily_data
+        data["weekly_horoscope_data"] = weekly_data
+        insert_data_into_astra_db(data=data)
+        return {"message": "successfully submitted", 'status': 200}
+    except Exception as e:
+        print(e)
+        return {"message": "Something went wrong. Please try again.", 'status': 504}
