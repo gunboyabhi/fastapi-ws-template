@@ -314,7 +314,7 @@ def process_daily_horoscope(request: Request):
 
 
 
-@app.post("/process")
+@app.post("/user_info")
 def process_message(request: chatRequest, req: Request):
     # get token
     try:
