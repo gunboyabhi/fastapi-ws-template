@@ -10,6 +10,7 @@ import uuid
 from starlette.middleware.sessions import SessionMiddleware
 from astrapy import DataAPIClient
 from pydantic import BaseModel
+from geopy.geocoders import Nominatim
 
 load_dotenv()
 
@@ -95,6 +96,11 @@ def get_data(request):
 
     url = "https://json.freeastrologyapi.com/planets"
 
+    state = request.state
+    city = request.city
+    geolocator = Nominatim(user_agent="soulBuddy")
+    location = geolocator.geocode(city)
+
     payload = json.dumps({
         "name": request.name,
         "year": request.year,
@@ -103,8 +109,8 @@ def get_data(request):
         "hours": request.hours,
         "minutes": request.minutes,
         "seconds": request.seconds,
-        "latitude": 90,
-        "longitude": 180,
+        "latitude": location.latitude,
+        "longitude": location.longitude,
         "timezone": 5.5,
         "settings": {
             "observation_point": "topocentric",
@@ -145,62 +151,63 @@ def insert_data_into_astra_db(data):
     print("Data inserted successfully.")
 
 
-# def format_response_from_groq(data):
-#     from groq import Groq
+def format_response_from_groq(prompt, msg):
+    from groq import Groq
 
-#     client = Groq(
-#         api_key= os.environ.get("GROQ_API_KEY"),
-#     )
+    client = Groq(
+        api_key= os.environ.get("GROQ_API_KEY"),
+    )
 
-#     prompt = """
-#         You are a highly knowledgeable and intuitive astrology guide. Your role is to interpret detailed astrological data and provide meaningful, personalized insights in a natural and engaging format. Use the following structured data to generate user-friendly spiritual guidance, including zodiac-specific insights, recommendations, and actionable advice.
+    # prompt = """
+    #     You are a highly knowledgeable and intuitive astrology guide. Your role is to interpret detailed astrological data and provide meaningful, personalized insights in a natural and engaging format. Use the following structured data to generate user-friendly spiritual guidance, including zodiac-specific insights, recommendations, and actionable advice.
 
-#         ### User Input Details:
-#         - *Name*: {User Name}
-#         - *Date of Birth*: {DD/MM/YYYY}
-#         - *Time of Birth*: {HH:MM AM/PM}
-#         - *Location of Birth*: {City, Country}
+    #     ### User Input Details:
+    #     - *Name*: {User Name}
+    #     - *Date of Birth*: {DD/MM/YYYY}
+    #     - *Time of Birth*: {HH:MM AM/PM}
+    #     - *Location of Birth*: {City, Country}
 
-#         ### Planetary Details (API Response):
-#         {Insert API response data here, including planets, positions, zodiac signs, retrograde status, and ayanamsha.}
+    #     ### Planetary Details (API Response):
+    #     {Insert API response data here, including planets, positions, zodiac signs, retrograde status, and ayanamsha.}
 
-#         ### Instructions:
-#         1. *Zodiac-Specific Insights*:
-#         - Explain the influence of each planet in its respective zodiac sign and house.
-#         - Mention the significance of retrograde planets, if any.
+    #     ### Instructions:
+    #     1. *Zodiac-Specific Insights*:
+    #     - Explain the influence of each planet in its respective zodiac sign and house.
+    #     - Mention the significance of retrograde planets, if any.
 
-#         2. *Personalized Recommendations*:
-#         - Suggest gemstones, rituals, or spiritual practices to enhance strengths or mitigate challenges.
-#         - Provide actionable tips tailored to the user’s astrological profile.
+    #     2. *Personalized Recommendations*:
+    #     - Suggest gemstones, rituals, or spiritual practices to enhance strengths or mitigate challenges.
+    #     - Provide actionable tips tailored to the user’s astrological profile.
 
-#         3. *Spiritual Guidance*:
-#         - Offer meditation or workout suggestions based on planetary alignments.
-#         - Include sleep-related content, like affirmations or mindfulness techniques.
+    #     3. *Spiritual Guidance*:
+    #     - Offer meditation or workout suggestions based on planetary alignments.
+    #     - Include sleep-related content, like affirmations or mindfulness techniques.
 
-#         4. *Practical Advice*:
-#         - Highlight "Do’s and Don’ts" for the user to follow based on the chart.
+    #     4. *Practical Advice*:
+    #     - Highlight "Do’s and Don’ts" for the user to follow based on the chart.
 
-#         5. *Output Structure*:
-#         Provide insights in a clear, readable format. For example:
+    #     5. *Output Structure*:
+    #     Provide insights in a clear, readable format. For example:
 
 
 
-#         6. *Fallback Instructions*:
-#         If some data is missing, use general astrological principles to fill gaps and provide meaningful insights.
+    #     6. *Fallback Instructions*:
+    #     If some data is missing, use general astrological principles to fill gaps and provide meaningful insights.
 
-#         Generate the output in a clear, engaging tone that resonates with users seeking spiritual guidance.
-#     """
+    #     Generate the output in a clear, engaging tone that resonates with users seeking spiritual guidance.
+    # """
 
-#     chat_completion = client.chat.completions.create(
-#         messages=[
-#             {
-#                 "role": "user",
-#                 "content": "Explain the importance of low latency LLMs",
-#             }
-#         ],
-#         model="llama3-8b-8192",
-#     )
-#     print(chat_completion.choices[0].message.content)
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": f"{prompt} \n {msg}",
+            }
+        ],
+        model="llama-3.1-8b-Instant",
+    )
+    response = chat_completion.choices[0].message.content
+    return response
 
 def get_zodiac_sign(day, month):
     if (month == 3 and day >= 21) or (month == 4 and day <= 19):
@@ -246,7 +253,11 @@ def get_zodiac_data_today(sign):
     if response.status_code == 200:
         horoscope_data = response.json()
         print("Horoscope Data:", horoscope_data)
-        return horoscope_data
+        prompt = """Convert the given text into Markdown format and provide a detailed 
+        explanation of its content in a comprehensive and elaborative manner, without 
+        adding any introductory or concluding remarks."""
+        formatted_response = format_response_from_groq(prompt=prompt, msg=horoscope_data)
+        return formatted_response
     else:
         print("Error:", response.status_code, response.text)
         return {}
@@ -267,7 +278,11 @@ def get_zodiac_data_weekly(sign):
     if response.status_code == 200:
         horoscope_data = response.json()
         print("Horoscope Data:", horoscope_data)
-        return horoscope_data
+        prompt = """Convert the given text into Markdown format and provide a detailed 
+        explanation of its content in a comprehensive and elaborative manner, without 
+        adding any introductory or concluding remarks."""
+        formatted_response = format_response_from_groq(prompt=prompt, msg=horoscope_data)
+        return formatted_response
     else:
         print("Error:", response.status_code, response.text)
         return {}
