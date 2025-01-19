@@ -5,3 +5,4 @@ httpx
 astrapy
 groq
 itsdangerous
+requests
