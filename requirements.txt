@@ -6,3 +6,4 @@ astrapy
 groq
 itsdangerous
 requests
+geopy
