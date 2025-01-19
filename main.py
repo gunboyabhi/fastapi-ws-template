@@ -38,7 +38,7 @@ app.add_middleware(
 )
 BASE_API_URL = "https://api.langflow.astra.datastax.com"
 LANGFLOW_ID = os.environ.get("LANGFLOW_ID")
-ENDPOINT = "social_stats"
+ENDPOINT = "soulbuddy"
 APPLICATION_TOKEN = os.environ.get("APP_TOKEN")
 
 
